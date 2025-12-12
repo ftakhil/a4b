@@ -79,7 +79,10 @@ const CardFront: React.FC<CardFrontProps> = ({ onFlipBack, profile, loading }) =
 
                 {/* 3. Flashcard (Vision) - Larger & Glowing */}
                 <div className="shrink-0">
-                    <CompanyFlashcard />
+                    <CompanyFlashcard
+                        description={profile?.brief_description}
+                        companyName={profile?.company_name}
+                    />
                 </div>
 
                 {/* 4. Chat Interface */}
