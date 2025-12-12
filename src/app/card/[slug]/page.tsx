@@ -1,13 +1,58 @@
 "use client";
-import React, { useState } from 'react';
-import CardBack from './components/CardBack';
-import CardFront from './components/CardFront';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useParams } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { DatabaseProfile } from '@/types/supabase';
+import CardBack from '../components/CardBack';
+import CardFront from '../components/CardFront';
 
 type AnimState = 'idle' | 'flipping' | 'flipped' | 'resetting';
 
 const CardPage: React.FC = () => {
     const [animState, setAnimState] = useState<AnimState>('idle');
     const [isZoomed, setIsZoomed] = useState(false);
+    const [profile, setProfile] = useState<DatabaseProfile | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const searchParams = useSearchParams();
+    const params = useParams();
+
+    // URL structure: /card/[slug]?id=[id]&c=[company]
+    const id = searchParams.get('id');
+    const slug = params.slug;
+
+    useEffect(() => {
+        const fetchCardData = async () => {
+            setLoading(true);
+            let query = supabase.from('company_profiles').select('*');
+
+            // Prioritize ID if available (as requested "id and company name in url")
+            if (id) {
+                query = query.eq('id', id);
+            } else if (slug) {
+                // Fallback to slug lookup if no ID provided
+                query = query.eq('profile_slug', slug);
+            } else {
+                setLoading(false);
+                return;
+            }
+
+            const { data, error } = await query.single();
+
+            if (data) {
+                setProfile(data);
+            } else if (error) {
+                console.error("Error fetching card profile:", error);
+            }
+            setLoading(false);
+        };
+
+        if (id || slug) {
+            fetchCardData();
+        } else {
+            setLoading(false);
+        }
+    }, [id, slug]);
 
     const handleReveal = () => {
         setAnimState('flipping');
@@ -61,7 +106,7 @@ const CardPage: React.FC = () => {
                     <CardBack onTap={handleReveal} />
 
                     {/* Front */}
-                    <CardFront onFlipBack={handleFlipBack} />
+                    <CardFront onFlipBack={handleFlipBack} profile={profile} loading={loading} />
 
                 </div>
 

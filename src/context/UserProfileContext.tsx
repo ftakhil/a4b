@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { DatabaseProfile } from "@/types/supabase";
 
 export interface UserProfile {
+    id?: string;
     name: string;
     companyName: string;
     category: string;
@@ -17,6 +18,7 @@ export interface UserProfile {
     avatarUrl: string; // Placeholder for now
     qrScanCount?: number;
     qrCodeImageUrl?: string;
+    profileSlug?: string;
     twitterUrl?: string;
     instagramUrl?: string;
     facebookUrl?: string;
@@ -38,6 +40,7 @@ interface UserProfileContextType {
 }
 
 const defaultProfile: UserProfile = {
+    id: "",
     name: "",
     companyName: "",
     category: "",
@@ -50,6 +53,7 @@ const defaultProfile: UserProfile = {
     avatarUrl: "", // Will use a default if empty
     qrScanCount: 0,
     qrCodeImageUrl: "",
+    profileSlug: "",
     twitterUrl: "",
     instagramUrl: "",
     facebookUrl: "",
@@ -105,6 +109,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
                     // Map DB to State
                     setProfile(prev => ({
                         ...prev,
+                        id: data.id,
                         name: data.owner_name || prev.name,
                         companyName: data.company_name || prev.companyName,
                         position: data.owner_role || prev.position,
@@ -114,6 +119,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
                         avatarUrl: data.owner_photo_url || prev.avatarUrl,
                         qrScanCount: data.qr_scan_count || 0,
                         qrCodeImageUrl: data.qr_code_image_url || prev.qrCodeImageUrl,
+                        profileSlug: data.profile_slug,
                         twitterUrl: data.twitter_url || prev.twitterUrl,
                         instagramUrl: data.instagram_url || prev.instagramUrl,
                         facebookUrl: data.facebook_url || prev.facebookUrl,
