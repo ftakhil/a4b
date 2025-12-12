@@ -3,10 +3,12 @@ const WEBHOOK_URL = 'https://n8n.srv1168084.hstgr.cloud/webhook-test/chatbot';
 
 export const getMonolithResponse = async (text: string, history: any[]) => {
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
         const payload = {
             message: text,
-            currentUrl: window.location.href, // Send full current URL including query params
-            history: history // Optional: if n8n workflow uses history
+            currentUrl: window.location.href, // Send full page URL
         };
 
         const response = await fetch(WEBHOOK_URL, {
@@ -15,21 +17,25 @@ export const getMonolithResponse = async (text: string, history: any[]) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            throw new Error(`Webhook failed: ${response.statusText}`);
+            throw new Error(`Server Error: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        // Assuming n8n returns something like { "output": "AI response text" } or just the text in a field.
-        // Adjust based on actual n8n output structure. 
-        // Logic: if data is object and has 'output', use it. Else if string, use it. Else stringify.
+        return data.output || data.text || data.message || "Monolith connected, but returned no text.";
 
-        return data.output || data.text || data.message || "Received response from Monolith.";
-
-    } catch (error) {
+    } catch (error: any) {
         console.error("Monolith Chat Error:", error);
-        return "Thinking process interrupted. Re-establishing link...";
+
+        if (error.name === 'AbortError') {
+            return "Connection timed out. Monolith system unresponsive (30s limit).";
+        }
+
+        return `Connection failed: ${error.message}`;
     }
 };
