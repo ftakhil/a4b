@@ -27,7 +27,15 @@ export const getMonolithResponse = async (text: string, history: any[]) => {
         }
 
         const data = await response.json();
-        return data.output || data.text || data.message || "Monolith connected, but returned no text.";
+
+        // Explicitly handle n8n array format: [{ "output": "..." }]
+        if (Array.isArray(data) && data.length > 0 && data[0]?.output) {
+            return data[0].output;
+        }
+
+        // Fallback checks
+        const result = Array.isArray(data) ? data[0] : data;
+        return result?.output || result?.text || result?.message || (typeof result === 'string' ? result : JSON.stringify(result));
 
     } catch (error: any) {
         console.error("Monolith Chat Error:", error);
