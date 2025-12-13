@@ -2,8 +2,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import { getMonolithResponse } from '../services/geminiService';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 const MonolithChat: React.FC = () => {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([
         { id: 'init', role: 'model', text: 'Monolith AI online.' }
@@ -34,7 +37,10 @@ const MonolithChat: React.FC = () => {
         }));
 
         try {
-            const currentUrl = window.location.href;
+            // Construct URL from Next.js hooks to ensure it's reactive to navigation
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const currentUrl = `${origin}${pathname}?${searchParams.toString()}`;
+
             const responseText = await getMonolithResponse(userMsg.text, history, currentUrl);
             const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', text: responseText };
             setMessages(prev => [...prev, aiMsg]);

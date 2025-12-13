@@ -138,7 +138,7 @@ const CardFront: React.FC<CardFrontProps> = ({ onFlipBack, profile, loading }) =
 
                 {/* 4. Chat Interface */}
                 <div className="flex-1 relative rounded-xl bg-surface border border-white/5 overflow-hidden shadow-inner flex flex-col">
-                    <MonolithChat />
+                    <MonolithChat key={profile?.id} />
                 </div>
 
             </div>
