@@ -1,28 +1,63 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { motion, AnimatePresence } from "framer-motion";
 import { n8nService } from "@/services/n8n";
+import { supabase } from "@/lib/supabaseClient";
 
 const steps = [
+    { id: "signup", title: "Create your account" },
     { id: "personal", title: "Let's start with you" },
     { id: "company", title: "Tell us about your company" },
     { id: "chatbot", title: "Configure your AI Agent" },
     { id: "details", title: "A bit more detail" },
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { profile, updateProfile } = useUserProfile();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Auth State
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [authError, setAuthError] = useState<string | null>(null);
+
     const handleNext = async () => {
+        setAuthError(null);
+
+        if (currentStep === 0) {
+            // Sign Up Step
+            setIsSubmitting(true);
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: profile.name || "New User" // We might not have name yet, but pass prompt if available or placeholder
+                    }
+                }
+            });
+
+            setIsSubmitting(false);
+
+            if (error) {
+                setAuthError(error.message);
+                return;
+            }
+
+            // Proceed if successful
+            setCurrentStep(currentStep + 1);
+            return;
+        }
+
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
         } else {
@@ -30,17 +65,15 @@ export default function OnboardingPage() {
             setIsSubmitting(true);
             const success = await n8nService.submitOnboardingData(profile);
 
-            // Note: We might want to show an error if it fails, but for now 
-            // we proceed to dashboard to not block the user, or we could just log it.
-            // Given the prompt "create such as the whole info is collected and send",
-            // we'll attempt send and then redirect.
-
             if (!success) {
                 console.warn("Background submission to n8n failed, proceeding anyway.");
             }
 
             setIsSubmitting(false);
-            router.push("/dashboard");
+
+            // Redirect to dashboard or return URL
+            const redirectUrl = searchParams.get('redirect') || "/dashboard";
+            router.push(redirectUrl);
         }
     };
 
@@ -78,6 +111,30 @@ export default function OnboardingPage() {
                             </h1>
 
                             {currentStep === 0 && (
+                                <div className="flex flex-col gap-4">
+                                    {authError && (
+                                        <div className="p-3 text-sm bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-center">
+                                            {authError}
+                                        </div>
+                                    )}
+                                    <Input
+                                        label="Email Address"
+                                        placeholder="you@company.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        type="email"
+                                    />
+                                    <Input
+                                        label="Password"
+                                        placeholder="Min. 6 characters"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        type="password"
+                                    />
+                                </div>
+                            )}
+
+                            {currentStep === 1 && (
                                 <>
                                     <div className="flex flex-col items-center mb-4">
                                         <div className="w-24 h-24 rounded-full neumorph-in flex items-center justify-center overflow-hidden mb-2 relative group cursor-pointer hover:opacity-80 transition-opacity">
@@ -123,7 +180,7 @@ export default function OnboardingPage() {
                                 </>
                             )}
 
-                            {currentStep === 1 && (
+                            {currentStep === 2 && (
                                 <>
                                     <Input
                                         label="Company Name"
@@ -155,7 +212,7 @@ export default function OnboardingPage() {
                                 </>
                             )}
 
-                            {currentStep === 2 && (
+                            {currentStep === 3 && (
                                 <div className="flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 max-h-[60vh]">
 
                                     {/* Q1: Tone */}
@@ -256,7 +313,7 @@ export default function OnboardingPage() {
                                 </div>
                             )}
 
-                            {currentStep === 3 && (
+                            {currentStep === 4 && (
                                 <>
                                     <Input
                                         label="LinkedIn URL"
@@ -295,15 +352,23 @@ export default function OnboardingPage() {
                         {isSubmitting ? (
                             <span className="flex items-center gap-2">
                                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                                Sending...
+                                {currentStep === 0 ? "Creating Account..." : "Sending..."}
                             </span>
                         ) : (
-                            currentStep === steps.length - 1 ? "Complete" : "Next"
+                            currentStep === 0 ? "Sign Up" : (currentStep === steps.length - 1 ? "Complete" : "Next")
                         )}
                     </Button>
                 </div>
 
             </Card>
         </main >
+    );
+}
+
+export default function OnboardingPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#050505] flex items-center justify-center text-white">Loading...</div>}>
+            <OnboardingContent />
+        </Suspense>
     );
 }

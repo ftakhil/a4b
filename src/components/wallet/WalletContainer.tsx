@@ -6,6 +6,8 @@ import BusinessCard from './BusinessCard';
 import { ArrowLeft } from 'lucide-react';
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, useScroll, useTransform, useSpring, MotionValue } from 'framer-motion';
+import { walletService, SavedCardDisplay } from '@/services/walletService';
+import { useRouter } from 'next/navigation';
 
 // Step 1: Dummy Data
 const DUMMY_CARDS = [
@@ -97,39 +99,55 @@ const CardWrapper = ({
     );
 }
 
+// CardWrapper was here, keeping it.
+
 const WalletContainer: React.FC = () => {
+    const router = useRouter();
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
+    const [cards, setCards] = useState<SavedCardDisplay[]>([]);
+    const [loading, setLoading] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ["start start", "end end"]
     });
 
-    // Auto-Scroll on Mount
-    // "the first card should be displayed in the middle like i have done a half scroll"
     useEffect(() => {
-        // Disable browser scroll restoration to ensure our manual scroll works
+        const fetchCards = async () => {
+            const data = await walletService.getWalletCards();
+            setCards(data);
+            setLoading(false);
+        };
+        fetchCards();
+    }, []);
+
+    // Auto-Scroll on Mount
+    useEffect(() => {
         if ('scrollRestoration' in history) {
             history.scrollRestoration = 'manual';
         }
-
-        // Scroll slightly down to trigger the entry animation for the first card
-        // 600px is roughly 20% of the 300vh height, triggering the first card's range (0-0.4)
         window.scrollTo({ top: 600, behavior: 'smooth' });
-
-    }, []);
+    }, [loading]); // Scrol after loading to ensure content is there? actually might be better to wait
 
     const handleCardClick = (index: number) => {
-        setActiveIndex(activeIndex === index ? null : index);
+        if (activeIndex === index) {
+            // If already active, navigate to it
+            const card = cards[index];
+            // Encode safely
+            const url = `/card/${card.slug || 'unknown'}?id=${card.profileId}&c=${encodeURIComponent(card.company)}`;
+            router.push(url);
+        } else {
+            setActiveIndex(index);
+        }
     };
 
     return (
         <div
             ref={containerRef}
             className="w-full relative bg-background"
-            style={{ height: '300vh' }} // Increased height for more scroll room
+            style={{ height: Math.max(200, cards.length * 60 + 100) + 'vh' }} // Dynamic height based on cards
         >
-            {/* Fixed Background Layer */}
+            {/* ... Background ... */}
             <div
                 className="fixed inset-0 z-0"
                 style={{
@@ -138,31 +156,41 @@ const WalletContainer: React.FC = () => {
                 }}
             />
 
-            {/* Sticky Stage - Adjusted for Top Alignment */}
             <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-start pt-32 overflow-hidden z-10 perspective-container">
-
-
 
                 {/* Search Bar Placeholder */}
                 <div className="absolute top-20 w-full max-w-sm px-4 z-40">
                     <div className="w-full h-10 bg-white/5 rounded-full border border-white/10 flex items-center px-4 text-white/30 text-sm backdrop-blur-sm">
-                        Search Cards...
+                        {loading ? "Syncing Grid..." : `${cards.length} Card${cards.length !== 1 ? 's' : ''} Collected`}
                     </div>
                 </div>
 
-                <div className="relative w-full max-w-sm h-[800px] flex justify-center" style={{ transformStyle: 'preserve-3d', perspective: '1000px' }}>
-                    {DUMMY_CARDS.map((card, i) => (
-                        <CardWrapper
-                            key={card.id}
-                            card={card}
-                            index={i}
-                            total={DUMMY_CARDS.length}
-                            scrollYProgress={scrollYProgress}
-                            isActive={activeIndex === i}
-                            onClick={() => handleCardClick(i)}
-                        />
-                    ))}
-                </div>
+                {loading ? (
+                    <div className="flex items-center justify-center h-[400px]">
+                        <div className="animate-spin w-8 h-8 border-2 border-neu-accent-start border-t-transparent rounded-full" />
+                    </div>
+                ) : cards.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[400px] text-neu-text-light opacity-50">
+                        <p>No cards yet.</p>
+                        <p className="text-xs mt-2">Scan a QR code to add one.</p>
+                    </div>
+                ) : (
+                    <div className="relative w-full max-w-sm h-[800px] flex justify-center" style={{ transformStyle: 'preserve-3d', perspective: '1000px' }}>
+                        {cards.map((card, i) => (
+                            <CardWrapper
+                                key={card.id}
+                                card={card}
+                                index={i}
+                                total={cards.length}
+                                scrollYProgress={scrollYProgress}
+                                isActive={activeIndex === i}
+                                onClick={() => handleCardClick(i)}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* ... Bottom Nav ... */}
 
                 <div className="absolute bottom-2 w-full max-w-md px-4 z-50">
                     <BottomNav />

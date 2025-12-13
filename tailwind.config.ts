@@ -64,6 +64,10 @@ const config: Config = {
                 'breathe-glow': {
                     '0%, 100%': { boxShadow: '0 0 10px rgba(79, 172, 254, 0.2)' },
                     '50%': { boxShadow: '0 0 20px rgba(79, 172, 254, 0.5)' },
+                },
+                'fade-in-up': {
+                    '0%': { opacity: '0', transform: 'translateY(20px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
                 }
             },
             animation: {
@@ -72,6 +76,7 @@ const config: Config = {
                 'flip-reset': 'flip-reset 0.8s cubic-bezier(0.455, 0.03, 0.515, 0.955) forwards',
                 glitter: 'glitter 2s ease-in-out infinite',
                 'breathe-glow': 'breathe-glow 4s ease-in-out infinite',
+                'fade-in-up': 'fade-in-up 0.6s ease-out forwards',
             }
         },
     },

@@ -3,6 +3,10 @@ import React from 'react';
 import MonolithChat from './MonolithChat';
 import CompanyFlashcard from './CompanyFlashcard';
 import { DatabaseProfile } from '@/types/supabase';
+import { Wallet, Check, Loader2 } from 'lucide-react';
+import { walletService } from '@/services/walletService';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
 interface CardFrontProps {
     onFlipBack?: () => void;
@@ -11,10 +15,42 @@ interface CardFrontProps {
 }
 
 const CardFront: React.FC<CardFrontProps> = ({ onFlipBack, profile, loading }) => {
-    // Parsing social links for the "Social Media" button or similar could come later.
-    // For now we just link the button to one of them or make it a dropdown trigger if requested.
-    // The user didn't specify multi-social behavior here, just "do not change anything... just repurpose".
-    // So I'll keep the button generic or link it to the first available social.
+    const router = useRouter();
+    const [saved, setSaved] = React.useState(false);
+    const [saving, setSaving] = React.useState(false);
+
+    React.useEffect(() => {
+        if (profile?.id) {
+            walletService.isSaved(profile.id).then(setSaved);
+        }
+    }, [profile]);
+
+    const handleSave = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!profile?.id) return;
+        setSaving(true);
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                // Redirect to login with return URL
+                const currentPath = window.location.pathname + window.location.search;
+                router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+                return;
+            }
+
+            const result = await walletService.addToWallet(profile.id);
+            if (result.error === 'already_saved') {
+                setSaved(true);
+            } else if (result.data) {
+                setSaved(true);
+            }
+        } catch (error) {
+            console.error("Save failed", error);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="absolute inset-0 w-full h-full rounded-[20px] bg-matte-black noise-bg shadow-soft-glow overflow-hidden flex flex-col backface-hidden rotate-y-180 border border-white/5 p-6">
@@ -64,14 +100,29 @@ const CardFront: React.FC<CardFrontProps> = ({ onFlipBack, profile, loading }) =
                         </p>
                     </div>
 
-                    {/* Social Media Button */}
-                    <button className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-highlight border border-white/10 hover:bg-white/10 transition-colors group/btn shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted group-hover/btn:text-text transition-colors">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                        <span className="text-[10px] font-medium text-text-muted group-hover/btn:text-text transition-colors">Socials</span>
-                    </button>
+                    {/* Actions Row */}
+                    <div className="ml-auto flex items-center gap-2">
+                        {/* Save Button */}
+                        <button
+                            onClick={handleSave}
+                            disabled={saved || saving}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all group/btn shrink-0 ${saved
+                                ? "bg-neu-accent-start/10 border-neu-accent-start/50 text-neu-accent-start"
+                                : "bg-surface-highlight border-white/10 hover:bg-white/10 text-text-muted hover:text-text"
+                                }`}
+                        >
+                            {saving ? (
+                                <Loader2 size={12} className="animate-spin" />
+                            ) : saved ? (
+                                <Check size={12} />
+                            ) : (
+                                <Wallet size={12} />
+                            )}
+                            <span className="text-[10px] font-medium">
+                                {saved ? "Saved" : "Save"}
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { Home, ScanLine, Wallet, Settings } from 'lucide-react';
+import { Home, CreditCard, Wallet, Settings } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useUserProfile } from '@/context/UserProfileContext';
 
@@ -31,7 +31,7 @@ export const BottomNav = () => {
 
             {/* Link to dynamic card page */}
             <Link href={cardLink} className={`${baseIconClass} ${pathname.startsWith('/card') ? activeClass : inactiveClass}`}>
-                <ScanLine size={24} />
+                <CreditCard size={24} />
             </Link>
 
             <Link href="/wallet" className={`${baseIconClass} ${isActive('/wallet') ? activeClass : inactiveClass}`}>
