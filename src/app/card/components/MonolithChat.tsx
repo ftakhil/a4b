@@ -34,7 +34,8 @@ const MonolithChat: React.FC = () => {
         }));
 
         try {
-            const responseText = await getMonolithResponse(userMsg.text, history);
+            const currentUrl = window.location.href;
+            const responseText = await getMonolithResponse(userMsg.text, history, currentUrl);
             const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', text: responseText };
             setMessages(prev => [...prev, aiMsg]);
         } catch (err) {
@@ -52,8 +53,8 @@ const MonolithChat: React.FC = () => {
                 {messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[90%] py-2 px-3 text-[11px] leading-relaxed rounded-lg ${msg.role === 'user'
-                                ? 'bg-text text-card font-medium'
-                                : 'bg-white/5 text-text-muted border border-white/5'
+                            ? 'bg-text text-card font-medium'
+                            : 'bg-white/5 text-text-muted border border-white/5'
                             }`}>
                             {msg.text}
                         </div>

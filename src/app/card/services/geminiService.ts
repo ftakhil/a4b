@@ -1,14 +1,14 @@
 // Update to call real n8n webhook
 const WEBHOOK_URL = 'https://n8n.srv1168084.hstgr.cloud/webhook-test/chatbot';
 
-export const getMonolithResponse = async (text: string, history: any[]) => {
+export const getMonolithResponse = async (text: string, history: any[], pageUrl: string) => {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
 
         const payload = {
             message: text,
-            currentUrl: window.location.href, // Send full page URL
+            currentUrl: pageUrl, // Use passed dynamic URL
         };
 
         const response = await fetch(WEBHOOK_URL, {
