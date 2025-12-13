@@ -131,10 +131,15 @@ const WalletContainer: React.FC = () => {
 
     const handleCardClick = (index: number) => {
         if (activeIndex === index) {
-            // If already active, navigate to it
-            const card = cards[index];
-            // Encode safely
-            const url = `/card/${card.slug || 'unknown'}?id=${card.profileId}&c=${encodeURIComponent(card.company)}`;
+            // Navigate to card
+            const card = cards[index]; // Re-added this line
+
+            // User requested to use the user's name in the URL instead of potentially random slugs
+            const safeSlug = card.owner
+                ? card.owner.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+                : (card.slug || 'user');
+
+            const url = `/card/${safeSlug}?id=${card.profileId}&c=${encodeURIComponent(card.company)}`;
             router.push(url);
         } else {
             setActiveIndex(index);

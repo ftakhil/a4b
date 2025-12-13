@@ -21,7 +21,7 @@ const steps = [
 function OnboardingContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { profile, updateProfile } = useUserProfile();
+    const { profile, updateProfile, refreshProfile, manualLogin } = useUserProfile();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,26 +34,16 @@ function OnboardingContent() {
         setAuthError(null);
 
         if (currentStep === 0) {
-            // Sign Up Step
-            setIsSubmitting(true);
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        full_name: profile.name || "New User" // We might not have name yet, but pass prompt if available or placeholder
-                    }
-                }
-            });
-
-            setIsSubmitting(false);
-
-            if (error) {
-                setAuthError(error.message);
+            // Sign Up Step - REPLACED WITH CUSTOM STORAGE
+            if (!email || !password) {
+                setAuthError("Please enter both email and password.");
                 return;
             }
 
-            // Proceed if successful
+            // Store credentials in context for final submission
+            updateProfile({ email, password });
+
+            // Proceed
             setCurrentStep(currentStep + 1);
             return;
         }
@@ -63,17 +53,49 @@ function OnboardingContent() {
         } else {
             // Final Step - Submit to n8n
             setIsSubmitting(true);
-            const success = await n8nService.submitOnboardingData(profile);
 
-            if (!success) {
-                console.warn("Background submission to n8n failed, proceeding anyway.");
+            try {
+                // Submit everything including email/password to n8n
+                // n8n should insert into company_profiles
+                const success = await n8nService.submitOnboardingData(profile);
+
+                if (!success) {
+                    throw new Error("Failed to submit data. Please try again.");
+                }
+
+                // Attempt to auto-login. n8n might take a moment to insert the row.
+                // We will poll for up to 20 seconds.
+                let attempts = 0;
+                let loginSuccess = false;
+
+                while (attempts < 10) {
+                    // Wait a bit before trying (give n8n time)
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    console.log(`Attempting login (Try ${attempts + 1}/10)...`);
+                    loginSuccess = await manualLogin(profile.email!, profile.password!);
+
+                    if (loginSuccess) break;
+                    attempts++;
+                }
+
+                if (loginSuccess) {
+                    // Success!
+                    setIsSubmitting(false);
+                    const redirectUrl = searchParams.get('redirect') || "/dashboard";
+                    router.push(redirectUrl);
+                } else {
+                    // Fallback if auto-login fails after retries
+                    console.error("Auto-login timed out.");
+                    setIsSubmitting(false);
+                    router.push('/login');
+                }
+
+            } catch (error: any) {
+                console.error("Submission failed:", error);
+                setAuthError(error.message || "Something went wrong.");
+                setIsSubmitting(false);
             }
-
-            setIsSubmitting(false);
-
-            // Redirect to dashboard or return URL
-            const redirectUrl = searchParams.get('redirect') || "/dashboard";
-            router.push(redirectUrl);
         }
     };
 

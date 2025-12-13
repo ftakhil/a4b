@@ -15,8 +15,13 @@ export const BottomNav = () => {
     const activeClass = "text-neu-accent-start bg-white/5 shadow-[0_0_15px_rgba(79,172,254,0.3)]";
     const inactiveClass = "text-neu-text-light hover:text-neu-accent-start";
 
-    // Construct card URL: /card/[slug]?id=[id]&c=[company]
-    const cardSlug = profile.profileSlug || 'my-card';
+    // Construct card URL: /card/[name-slug]?id=[id]&c=[company]
+    // Prefer generating slug from name as requested by user to avoid "jaba-jaba" or random slugs
+    const nameSlug = profile.name
+        ? profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+        : null;
+
+    const cardSlug = nameSlug || profile.profileSlug || 'my-card';
     const cardId = profile.id || '';
     const company = profile.companyName ? encodeURIComponent(profile.companyName) : '';
 

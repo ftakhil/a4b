@@ -5,9 +5,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Mail, Lock, Loader2 } from 'lucide-react';
 
+import { useUserProfile } from '@/context/UserProfileContext';
+
 function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { manualLogin } = useUserProfile();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,12 +22,11 @@ function LoginContent() {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            const success = await manualLogin(email, password);
 
-            if (error) throw error;
+            if (!success) {
+                throw new Error("Invalid email or password.");
+            }
 
             // Redirect to dashboard or specific URL
             const redirectUrl = searchParams.get('redirect') || '/dashboard';
